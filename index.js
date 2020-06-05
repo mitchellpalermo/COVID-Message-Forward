@@ -6,7 +6,7 @@ const twilioClient = require("twilio")(
 );
 
 exports.forwardMessage = async (req, res) => {
-  console.log("First line of the func");
+  console.log("Forward Messages Triggered");
   const auth = await google.auth.getClient({
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
@@ -14,35 +14,31 @@ exports.forwardMessage = async (req, res) => {
   console.log("created the google client");
 
   var valuesToAppend = await getTexts(twilioClient); //getting texts from twilio
-  if (valuesToAppend != null) {
+  if (valuesToAppend.length > 0) {
     appendValues(sheetsClient, valuesToAppend);
+    console.log("Values have been appended");
+  } else {
+    console.log("no messages from this service");
   }
 };
 
 async function getTexts(twilioClient) {
-  const today = new Date();
+  console.log("TWilio getTexts() triggered");
+  const dateOfService = new Date();
+  dateOfService.setDate(2);
+  dateOfService.setHours(0);
+  dateOfService.setMinutes(00);
+  console.log("getting messages from " + dateOfService.getDay());
   var valuesToAppend = [];
   //getting texts from the last 24 hours
   var messages = await twilioClient.messages.list({
-    dateSentAfter: new Date(
-      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
-    ),
-    dateSentBefore: new Date(
-      Date.UTC(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-        23,
-        59,
-        0
-      )
-    ),
+    dateSent: dateOfService,
     to: process.env.PHONE_NUMBER,
-    limit: 1,
+    direction: "inbound",
   });
 
   if (messages.length == 0) {
-    console.log("no messages for " + today.getDay());
+    console.log("no messages for " + dateOfService.getDay());
   } else {
     messages.forEach((m) => {
       var newRow = [m.body, m.from, m.dateSent];
@@ -53,6 +49,7 @@ async function getTexts(twilioClient) {
 }
 
 function appendValues(sheetsClient, valuesToAppend) {
+  console.log("Google Sheets appendValues() triggered");
   const options = {
     spreadsheetId: process.env.SPREADSHEET_ID,
     range: "Sheet1",
